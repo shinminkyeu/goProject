@@ -1,4 +1,4 @@
-package main
+package modules
 
 import (
 	"context"
@@ -11,15 +11,48 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-func main() {
+var client *ethclient.Client
+var err error
+
+func SetBlockChain() {
+	client, err = ethclient.Dial("https://ropsten.infura.io/v3/3653954447b743cbb37e696796cdc554")
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func UpdateBlockNumber(blockNumber chan *big.Int) {
+	go func() {
+		for {
+			header, err := client.HeaderByNumber(context.Background(), nil)
+			if err != nil {
+				log.Fatal(err)
+			}
+			blockNumber <- big.NewInt(header.Number.Int64())
+		}
+	}()
+}
+func GetBlock(from, to *big.Int, blocks chan *types.Block, wg *sync.WaitGroup) {
+	go func() {
+		for from.Cmp(to) < 0 {
+			from = from.Add(from, big.NewInt(1))
+			block, err := client.BlockByNumber(context.Background(), from)
+			if err != nil {
+				log.Fatal(err)
+			}
+			blocks <- block
+			wg.Add(1)
+		}
+	}()
+}
+func MainScan() {
 	client, err := ethclient.Dial("https://ropsten.infura.io/v3/3653954447b743cbb37e696796cdc554")
 	var blockNumber *big.Int
-	currentBlockNum := big.NewInt(7417655)
+	currentBlockNum := big.NewInt(7417699)
 	blocks := make(chan *types.Block)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	header, err := client.HeaderByNumber(context.Background(), nil)
 	if err != nil {
 		log.Fatal(err)
