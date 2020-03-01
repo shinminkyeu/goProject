@@ -46,6 +46,9 @@ func InsertBlock(_block chan *types.Block, wg *sync.WaitGroup) {
 		fmt.Println("3", block.Difficulty().Uint64())
 		fmt.Println("4", block.Hash().Hex())
 		fmt.Println("5", len(block.Transactions()))
+		for _transaction := range block.Transactions() {
+			fmt.Println("Hello", _transaction.Data())
+		}
 		wg.Done()
 	}
 }

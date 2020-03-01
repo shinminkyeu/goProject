@@ -5,8 +5,17 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/scanBlock/goProject/modules"
+	//"github.com/scanBlock/goProject/modules"
+	"EtherScan/modules"
 )
+
+// type BlockData struct {
+// 	Number       uint64
+// 	Time         uint64
+// 	Difficulty   uint64
+// 	Hash         string
+// 	Transactions []Transactions
+// }
 
 func main() {
 	modules.SetBlockChain()
