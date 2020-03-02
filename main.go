@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	//"github.com/scanBlock/goProject/modules"
-	"EtherScan/modules"
+	"github.com/scanBlock/goProject/modules"
+	//"EtherScan/modules"
 )
 
 // type BlockData struct {
@@ -20,7 +20,7 @@ import (
 func main() {
 	modules.SetBlockChain()
 	blocks := make(chan *types.Block)
-	savedBlockNumber := big.NewInt(7418569) //modules.LastBlockNumber()
+	savedBlockNumber := big.NewInt(7420000) //modules.LastBlockNumber()
 	blockNumber := make(chan *big.Int, 1)
 	modules.UpdateBlockNumber(blockNumber)
 	wg := sync.WaitGroup{}

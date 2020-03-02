@@ -41,13 +41,16 @@ func LastBlockNumber() *big.Int {
 
 func InsertBlock(_block chan *types.Block, wg *sync.WaitGroup) {
 	for block := range _block {
-		fmt.Println("1", block.Number().Uint64())
-		fmt.Println("2", block.Time())
-		fmt.Println("3", block.Difficulty().Uint64())
-		fmt.Println("4", block.Hash().Hex())
-		fmt.Println("5", len(block.Transactions()))
-		for _transaction := range block.Transactions() {
-			fmt.Println("Hello", _transaction.Data())
+		fmt.Println(".1", block.Number().Uint64())
+		fmt.Println(".2", block.Time())
+		fmt.Println(".3", block.Difficulty().Uint64())
+		fmt.Println(".4", block.Hash().Hex())
+		fmt.Println(".5", block.Transactions().Len())
+		// for i := 0; i < block.Transactions().Len(); i++ {
+		// 	fmt.Println(block.Transactions().GetRlp(i))
+		// }
+		for _tx := range block.Transactions() {
+			fmt.Println(_tx)
 		}
 		wg.Done()
 	}
