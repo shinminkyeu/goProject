@@ -1,0 +1,5 @@
+package block
+
+func AddTransaction() {
+
+}

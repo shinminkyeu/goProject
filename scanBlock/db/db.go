@@ -64,9 +64,8 @@ func (db *DB) GetLastBlock() (*big.Int, error) {
 	cur := db.collection.FindOne(ctx, bson.D{}, option)
 	err = cur.Decode(&rec)
 	if err != nil {
-		return new(big.Int).SetUint64(0), err
+		fmt.Println(err)
 	}
-	fmt.Println("hello ", new(big.Int).SetUint64(rec.Number))
 	return new(big.Int).SetUint64(rec.Number), err
 }
 

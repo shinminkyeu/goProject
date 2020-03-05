@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/scanBlock/goProject/block"
-	"github.com/scanBlock/goProject/db"
+	"github.com/goProject/scanBlock/block"
+	"github.com/goProject/scanBlock/db"
 )
 
 type Info struct {
@@ -40,7 +40,7 @@ func (i *Info) loop(p *block.Chain, q *db.DB) {
 		if i.chainBlockNumber.Cmp(i.dbBlockNumber) > 0 {
 			i.dbBlockNumber.Add(i.dbBlockNumber, new(big.Int).SetUint64(1))
 			if _block, err := p.GetBlockByNumber(i.dbBlockNumber); err == nil {
-				go q.InsertBlock(_block)
+				q.InsertBlock(_block)
 				fmt.Println("i.dbBlockNumber : ", i.dbBlockNumber)
 			} else {
 				fmt.Println("err : ", err)
