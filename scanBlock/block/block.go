@@ -9,7 +9,7 @@ import (
 	"github.com/klaytn/klaytn/networks/rpc"
 )
 
-const Url = "https://api.baobab.klaytn.net:8651"
+const url = "https://api.baobab.klaytn.net:8651"
 const privateKey = "0x45c5fbbd2213a173afc131fc23f09611486a7572554084145a9b2be93fbf1ccd"
 const address = "0x821b2d7c3603bf08b8405afe2981a2beb4df72c3"
 
@@ -21,7 +21,7 @@ type Chain struct {
 
 //현재 블럭 넘버를 가져오는 함수
 func GetChain() (*Chain, error) {
-	rpcClient, err := rpc.Dial(Url)
+	rpcClient, err := rpc.Dial(url)
 	if err != nil {
 		return nil, err
 	}

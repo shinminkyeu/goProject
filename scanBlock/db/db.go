@@ -58,10 +58,9 @@ func GetDB() (*DB, error) {
 
 func (db *DB) GetLastBlock() (*big.Int, error) {
 	rec := BlockHeader{}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err := db.client.Connect(ctx)
+	err := db.client.Connect(context.Background())
 	option := options.FindOne().SetSort(map[string]int{"number": -1})
-	cur := db.collection.FindOne(ctx, bson.D{}, option)
+	cur := db.collection.FindOne(context.Background(), bson.D{}, option)
 	err = cur.Decode(&rec)
 	if err != nil {
 		fmt.Println(err)
@@ -80,8 +79,6 @@ func (db *DB) InsertBlock(data *types.Block) {
 		BlockTime:   data.Time().Uint64(),
 		Time:        time.Now(),
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-	err := db.client.Connect(ctx)
 
 	len := data.Transactions().Len()
 	if len > 0 {
@@ -93,12 +90,13 @@ func (db *DB) InsertBlock(data *types.Block) {
 		}
 		wg.Wait()
 		close(txChan)
+		err := db.client.Connect(context.Background())
 		transactions := make([]TxInfo, len)
 		for i := 0; i < len; i++ {
 			transactions[i] = *<-txChan
 		}
 		blockData.Transactions = transactions
-		_, err = db.collection.InsertOne(ctx, *blockData)
+		_, err = db.collection.InsertOne(context.Background(), *blockData)
 
 		if err != nil {
 			fmt.Println(err)
@@ -108,17 +106,26 @@ func (db *DB) InsertBlock(data *types.Block) {
 
 func (db *DB) InsertTransaction(data *types.Transaction, txs chan *TxInfo, wg *sync.WaitGroup) {
 	from, _ := data.From()
-	tx := &TxInfo{
-		Hash:     data.Hash().String(),
-		Type:     data.Type().String(),
-		From:     from.String(),
-		To:       data.To().String(),
-		Value:    data.Value().Uint64(),
-		Nonce:    data.Nonce(),
-		GasPrice: data.GasPrice().Uint64(),
-		Gas:      data.Gas(),
-		Data:     data.Data(),
-	}
-	txs <- tx
-	wg.Done()
+	to := func() string {
+		if data.To() != nil {
+			return data.To().String()
+		} else {
+			return ""
+		}
+	}()
+	defer func() {
+		tx := &TxInfo{
+			Hash:     data.Hash().String(),
+			Type:     data.Type().String(),
+			From:     from.String(),
+			To:       to,
+			Value:    data.Value().Uint64(),
+			Nonce:    data.Nonce(),
+			GasPrice: data.GasPrice().Uint64(),
+			Gas:      data.Gas(),
+			Data:     data.Data(),
+		}
+		txs <- tx
+		wg.Done()
+	}()
 }
