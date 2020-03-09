@@ -29,7 +29,6 @@ func main() {
 }
 
 func (i *Info) loop(p *block.Chain, q *db.DB) {
-	//go func() {
 	for {
 		if blockNumber := p.GetLastBlock(); blockNumber.Cmp(i.chainBlockNumber) == 0 {
 			time.Sleep(0.1e9)
@@ -49,5 +48,4 @@ func (i *Info) loop(p *block.Chain, q *db.DB) {
 			time.Sleep(0.1e9)
 		}
 	}
-	//}()
 }

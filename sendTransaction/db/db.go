@@ -21,8 +21,9 @@ type DB struct {
 	Client      *mongo.Client
 	Transaction *mongo.Collection
 	Block       *mongo.Collection
-	Ctx         *context.Context
 }
+
+//21930181
 
 //GetDB 시작함수
 func GetDB() (*DB, error) {
@@ -30,19 +31,18 @@ func GetDB() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 	reVal := &DB{
 		Client:      client,
 		Transaction: client.Database("Klaytn").Collection("UserTransaction"),
 		Block:       client.Database("Klaytn").Collection("Block"),
-		Ctx:         &ctx,
 	}
 	return reVal, err
 }
 
 //Loop 유저의 TxHahs를 저장, 체인에 올라간것은 삭제.
 func (db *DB) Loop(_hash, _event chan string, wg *sync.WaitGroup) {
-	err := db.Client.Connect(*db.Ctx)
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
+	err := db.Client.Connect(ctx)
 	if err != nil {
 		fmt.Println("Loop : ", err)
 	}
@@ -62,11 +62,12 @@ func (db *DB) Loop(_hash, _event chan string, wg *sync.WaitGroup) {
 
 //insertHash 해쉬 넣기
 func (db *DB) insertHash(hash string) (interface{}, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 	input := &UserTransactionModel{
 		Hash: hash,
 		Time: time.Now(),
 	}
-	result, err := db.Transaction.InsertOne(*db.Ctx, input)
+	result, err := db.Transaction.InsertOne(ctx, input)
 
 	if err != nil {
 		return nil, err
@@ -79,8 +80,9 @@ func (db *DB) insertHash(hash string) (interface{}, error) {
 func (db *DB) RemovetHash(_id interface{}, hash string, _event chan string, wg *sync.WaitGroup) error {
 	var mResult bson.M
 	filter := bson.M{"transactions.hash": hash}
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 	for {
-		err := db.Block.FindOne(*db.Ctx, filter).Decode(&mResult)
+		err := db.Block.FindOne(ctx, filter).Decode(&mResult)
 		if err != nil && err.Error() != "mongo: no documents in result" {
 			return err
 		}
@@ -89,7 +91,7 @@ func (db *DB) RemovetHash(_id interface{}, hash string, _event chan string, wg *
 		}
 	}
 	_event <- hash + "Completed"
-	_, err := db.Transaction.DeleteOne(*db.Ctx, bson.M{"hash": hash})
+	_, err := db.Transaction.DeleteOne(ctx, bson.M{"hash": hash})
 	if err != nil {
 		return err
 	}
