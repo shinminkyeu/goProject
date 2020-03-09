@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/goProject/model"
+
 	"github.com/goProject/scanBlock/block"
 	"github.com/goProject/scanBlock/db"
 )
@@ -12,11 +14,16 @@ import (
 type Info struct {
 	chainBlockNumber *big.Int
 	dbBlockNumber    *big.Int
+	mangeChan        *model.ChanInfo
 }
 
 func main() {
-	chain, err := block.GetChain()
-	db, err := db.GetDB()
+	MainChan := &model.ChanInfo{
+		Block:       make(chan *model.BlockHeader),
+		Transaction: make(chan *model.TxInfo),
+	}
+	chain, err := block.GetChain(MainChan)
+	db, err := db.GetDB(MainChan)
 	if err != nil {
 		fmt.Println("err : ", err)
 	}
@@ -24,28 +31,21 @@ func main() {
 	inst := &Info{
 		chainBlockNumber: dbLastBlock,
 		dbBlockNumber:    dbLastBlock,
+		mangeChan:        MainChan,
 	}
 	inst.loop(chain, db)
 }
 
 func (i *Info) loop(p *block.Chain, q *db.DB) {
 	for {
-		if blockNumber := p.GetLastBlock(); blockNumber.Cmp(i.chainBlockNumber) == 0 {
-			time.Sleep(0.1e9)
-		} else {
-			i.chainBlockNumber = blockNumber
-		}
-		fmt.Println("i.chainBlockNumber : ", i.chainBlockNumber)
+		i.chainBlockNumber, _ = p.GetLastBlock()
+		i.dbBlockNumber, _ = q.GetLastBlock()
+		fmt.Println("i.chainBlockNumber : ", i.chainBlockNumber, "i.dbBlockNumber :", i.dbBlockNumber)
 		if i.chainBlockNumber.Cmp(i.dbBlockNumber) == 0 {
-			time.Sleep(0.1e9)
+			time.Sleep(1 * time.Second)
 		} else {
-			i.dbBlockNumber.Add(i.dbBlockNumber, new(big.Int).SetUint64(1))
-			if _block, err := p.GetBlockByNumber(i.dbBlockNumber); err == nil {
-				q.InsertBlock(_block)
-				fmt.Println("i.dbBlockNumber : ", i.dbBlockNumber)
-			} else {
-				fmt.Println("err : ", err)
-			}
+			p.Loop(i.dbBlockNumber.Add(i.dbBlockNumber, new(big.Int).SetInt64(1)), i.mangeChan)
+			q.Loop(i.mangeChan)
 		}
 	}
 }

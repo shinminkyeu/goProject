@@ -134,7 +134,7 @@ func (c *Chain) sendTransaction(tx *TypeTransaction) (common.Hash, error) {
 	return txhash, nil
 }
 
-//SignTransaction 트랜젝션에 서명한뒤, 보낸다.
+//SignTransaction 트랜젝션에 서명
 func (c *Chain) signTransaction(tx *TypeTransaction, hash common.Hash, address string, password string) (*TypeTransaction, common.Hash, error) {
 	pk, err := getPk(address, password)
 	if err != nil {
@@ -156,6 +156,7 @@ func (c *Chain) signTransaction(tx *TypeTransaction, hash common.Hash, address s
 //MakeTransaction  사용자 입력값을 통해 트랜잭션 객채, Hash값을 만들고 리턴한다.
 func (c *Chain) makeTransaction(input *InputTransaction) (*TypeTransaction, common.Hash, error) {
 	blockNumber, err := c.client.BlockNumber(context.Background())
+
 	if err != nil {
 		return nil, common.Hash{}, err
 	}
