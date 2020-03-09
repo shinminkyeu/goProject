@@ -36,7 +36,9 @@ func (i *Info) loop(p *block.Chain, q *db.DB) {
 			i.chainBlockNumber = blockNumber
 		}
 		fmt.Println("i.chainBlockNumber : ", i.chainBlockNumber)
-		if i.chainBlockNumber.Cmp(i.dbBlockNumber) > 0 {
+		if i.chainBlockNumber.Cmp(i.dbBlockNumber) == 0 {
+			time.Sleep(0.1e9)
+		} else {
 			i.dbBlockNumber.Add(i.dbBlockNumber, new(big.Int).SetUint64(1))
 			if _block, err := p.GetBlockByNumber(i.dbBlockNumber); err == nil {
 				q.InsertBlock(_block)
@@ -44,8 +46,6 @@ func (i *Info) loop(p *block.Chain, q *db.DB) {
 			} else {
 				fmt.Println("err : ", err)
 			}
-		} else {
-			time.Sleep(0.1e9)
 		}
 	}
 }
