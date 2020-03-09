@@ -3,14 +3,18 @@ package block
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/klaytn/klaytn/accounts/keystore"
+	"github.com/klaytn/klaytn/blockchain/types"
 	"github.com/klaytn/klaytn/client"
 	"github.com/klaytn/klaytn/common"
 	"github.com/klaytn/klaytn/common/hexutil"
@@ -31,8 +35,8 @@ type Chain struct {
 
 //InputTransaction 객체
 type InputTransaction struct {
-	From     common.Address
-	To       common.Address
+	From     string
+	To       string
 	Value    *big.Int
 	Data     []byte
 	Password string
@@ -74,50 +78,75 @@ func GetChain() (*Chain, error) {
 }
 
 //Loop Public
-func (c *Chain) Loop(tx <-chan *InputTransaction, chHash chan string) {
+func (c *Chain) Loop(tx <-chan *InputTransaction, chHash chan<- string, wg *sync.WaitGroup) {
 	for {
 		_tx := <-tx
 		transaction, hash, err := c.makeTransaction(_tx)
 		if err != nil {
 			fmt.Println("MakeTransaction :", err)
 		}
-		transaction, hash, err = c.signTransaction(transaction, hash, _tx.From.Hex(), _tx.Password)
+		transaction, hash, err = c.signTransaction(transaction, hash, _tx.From, _tx.Password)
 		if err != nil {
 			fmt.Println("SignTransaction :", err)
 		}
-		chHash <- hash.Hex()
-		_, err = c.sendTransaction(transaction)
+		hash, err = c.sendTransaction(transaction)
 		if err != nil {
 			fmt.Println("SendTransaction :", err)
 		}
+		_, err = c.getReceipt(hash)
+		if err != nil {
+			fmt.Println("getReceipt :", err)
+		}
+		wg.Done()
 	}
 }
 
 //GetPk 사용자의 KeyStore파일을 읽고 비밀번호가 일치하다면 pk를 리턴한다.
-func getPk(address string, password string) (*ecdsa.PrivateKey, error) {
+func getPk(address, password string) (*ecdsa.PrivateKey, error) {
 	files, err := ioutil.ReadDir("/Users/min/go/src/github.com/goProject/keystore/")
 	if err != nil {
 		return nil, err
 	}
 	file, err := func() (string, error) {
 		for _, f := range files {
-			target := strings.Split(f.Name(), "-")[1]
-			target = strings.TrimSpace(target)
-			if target == address {
-				return f.Name(), nil
+			_target := strings.Split(f.Name(), "-")
+			if len(_target) > 1 {
+				target := _target[1]
+				target = strings.TrimSpace(target)
+				fmt.Println(target, " : ", address, " : ", target == address)
+				if target == address {
+					return f.Name(), nil
+				}
 			}
 		}
 		return "", errors.New("Can not find File")
 	}()
+	if err != nil {
+		return nil, err
+	}
 	keyfile, err := ioutil.ReadFile("/Users/min/go/src/github.com/goProject/keystore/" + file)
 	if err != nil {
 		return nil, err
 	}
-	if key, err := keystore.DecryptKey(keyfile, password); err == nil {
-		return key.GetPrivateKey(), nil
-	} else {
+	key, err := keystore.DecryptKey(keyfile, password)
+	if err != nil {
 		return nil, err
 	}
+	return key.GetPrivateKey(), nil
+
+}
+
+func (c *Chain) getReceipt(txHash common.Hash) (*types.Receipt, error) {
+	out := new(types.Receipt)
+	fmt.Println(">>>>", txHash.Hex())
+	for out == nil || out.Status == 0 {
+		time.Sleep(1 * time.Second)
+		err := c.rpcClient.CallContext(context.Background(), &out, "klay_getTransactionReceipt", txHash)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return nil, nil
 }
 
 //SendTransaction 서명된 트랜젝션을 보낸다.
@@ -137,14 +166,14 @@ func (c *Chain) sendTransaction(tx *TypeTransaction) (common.Hash, error) {
 //SignTransaction 트랜젝션에 서명
 func (c *Chain) signTransaction(tx *TypeTransaction, hash common.Hash, address string, password string) (*TypeTransaction, common.Hash, error) {
 	pk, err := getPk(address, password)
+	//pk, err := toECDSA("a33e72b3b907dcce0dd7fcabbbb1bb4f0dc0e1f68656982685b14e1d009a79fd")
 	if err != nil {
-		return nil, common.Hash{}, err
-	}
-	if err != nil {
+		fmt.Println("1")
 		return nil, common.Hash{}, err
 	}
 	sig, err := crypto.Sign(hash[:], pk)
 	if err != nil {
+		fmt.Println("2")
 		return nil, common.Hash{}, err
 	}
 	tx.R = new(big.Int).SetBytes(sig[:32])
@@ -156,15 +185,26 @@ func (c *Chain) signTransaction(tx *TypeTransaction, hash common.Hash, address s
 //MakeTransaction  사용자 입력값을 통해 트랜잭션 객채, Hash값을 만들고 리턴한다.
 func (c *Chain) makeTransaction(input *InputTransaction) (*TypeTransaction, common.Hash, error) {
 	blockNumber, err := c.client.BlockNumber(context.Background())
-
+	from := common.HexToAddress(input.From)
+	to := common.HexToAddress(input.To)
 	if err != nil {
 		return nil, common.Hash{}, err
 	}
-	nonce, err := c.client.NonceAt(context.Background(), input.From, blockNumber)
+	nonce, err := c.client.NonceAt(context.Background(), from, blockNumber)
 	if err != nil {
 		return nil, common.Hash{}, err
 	}
-	tx := &TypeTransaction{nonce, c.gasPrice, 21000, &input.To, input.Value, input.Data, nil, nil, nil}
+	tx := &TypeTransaction{
+		nonce,
+		c.gasPrice,
+		21000,
+		&to,
+		input.Value,
+		input.Data,
+		nil,
+		nil,
+		nil,
+	}
 	transaction := []interface{}{
 		tx.AccountNonce,
 		tx.Price,
@@ -184,4 +224,12 @@ func toHash(x interface{}) (h common.Hash) {
 	rlp.Encode(hw, x)
 	hw.Sum(h[:0])
 	return h
+}
+
+func toECDSA(hexPK string) (*ecdsa.PrivateKey, error) {
+	key, err := hex.DecodeString(hexPK)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.ToECDSA(key)
 }

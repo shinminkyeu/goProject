@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 
 	"github.com/goProject/sendTransaction/block"
-	"github.com/goProject/sendTransaction/db"
 )
 
 type MainChan struct {
@@ -21,20 +21,22 @@ func main() {
 		Event:       make(chan string),
 	}
 	chain, err := block.GetChain()
-	db, err := db.GetDB()
 	if err != nil {
 		fmt.Println(err)
 	}
+	tempTx := &block.InputTransaction{
+		From:     "0x65ec6ef2e9a082943cb8074453dd0a436a08faab",
+		To:       "0x90e6b0dc10aeba0e5f5200cdbbb5f46db216d6f4",
+		Value:    new(big.Int).SetUint64(10000000),
+		Data:     []byte{},
+		Password: "1q2w3e4r!!",
+	}
+
 	go func() {
-		chMain.TxHash <- "0xa42585152bad01f72e058412c867c7e4ef1714a24ea175e3f362990a4c60df77"
+		chMain.Transaction <- tempTx
 	}()
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-	go chain.Loop(chMain.Transaction, chMain.TxHash)
-	go db.Loop(chMain.TxHash, chMain.Event, &wg)
-	for {
-		event := <-chMain.Event
-		fmt.Println("Main :", event)
-	}
+	go chain.Loop(chMain.Transaction, chMain.TxHash, &wg)
 	wg.Wait()
 }
