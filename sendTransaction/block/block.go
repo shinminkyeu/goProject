@@ -93,10 +93,11 @@ func (c *Chain) Loop(tx <-chan *InputTransaction, chHash chan<- string, wg *sync
 		if err != nil {
 			fmt.Println("SendTransaction :", err)
 		}
-		_, err = c.getReceipt(hash)
+		receipt, err := c.getReceipt(hash)
 		if err != nil {
 			fmt.Println("getReceipt :", err)
 		}
+		fmt.Println(*receipt)
 		wg.Done()
 	}
 }
@@ -137,16 +138,32 @@ func getPk(address, password string) (*ecdsa.PrivateKey, error) {
 }
 
 func (c *Chain) getReceipt(txHash common.Hash) (*types.Receipt, error) {
-	out := new(types.Receipt)
-	fmt.Println(">>>>", txHash.Hex())
-	for out == nil || out.Status == 0 {
+	receipt := new(types.Receipt)
+	for receipt == nil || receipt.Status == 0 {
 		time.Sleep(1 * time.Second)
-		err := c.rpcClient.CallContext(context.Background(), &out, "klay_getTransactionReceipt", txHash)
+		err := c.rpcClient.CallContext(context.Background(), &receipt, "klay_getTransactionReceipt", txHash)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return nil, nil
+	return receipt, nil
+	// receipt := func() *types.Receipt {
+	// 	fin := make(chan *types.Receipt, 1)
+	// 	go func() {
+	// 		time.Sleep(1e9)
+	// 		for {
+	// 			if receipt, _ := c.client.TransactionReceipt(context.Background(), txHash); receipt != nil {
+	// 				fin <- receipt
+	// 			} else {
+	// 				time.Sleep(1e9)
+	// 			}
+	// 		}
+	// 	}()
+	// 	receipt := <-fin
+	// 	return receipt
+	// }()
+	// fmt.Println(receipt)
+	// return receipt, nil
 }
 
 //SendTransaction 서명된 트랜젝션을 보낸다.
@@ -187,6 +204,7 @@ func (c *Chain) makeTransaction(input *InputTransaction) (*TypeTransaction, comm
 	blockNumber, err := c.client.BlockNumber(context.Background())
 	from := common.HexToAddress(input.From)
 	to := common.HexToAddress(input.To)
+	fmt.Println("from", from)
 	if err != nil {
 		return nil, common.Hash{}, err
 	}
