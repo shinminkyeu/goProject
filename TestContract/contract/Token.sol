@@ -1,4 +1,4 @@
-pragma solidity 0.6.1;
+pragma solidity 0.6.4;
 pragma experimental ABIEncoderV2;
 
 import "./library/SafeMath.sol";
@@ -16,7 +16,7 @@ struct Beverage {
 contract Token is ERC20, ERC20Detailed, Ownable{
     uint8 private _maxAmount = 50;
     uint8 private _maxKinds = 20;
-    uint16 private _profit = 500;
+    uint16 private _profit = 200;
     Beverage[] allBeverages;
     
     event AddBeverage(uint8 indexed index, string name, uint16 price, uint8 amount);
@@ -24,7 +24,8 @@ contract Token is ERC20, ERC20Detailed, Ownable{
     event BuyBeverage(uint8 indexed index, string name, uint16 price);
     constructor()
     ERC20Detailed("TempToken","Temp",18) public {
-        super._mint(_msgSender(), 1000000000*10**18);
+        super._mint(_msgSender(), 500000000*10**18);
+        super._mint(address(this), 500000000*10**18);
     }
 
     function managedBalace() public view returns(uint256){
