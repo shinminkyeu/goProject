@@ -67,7 +67,20 @@ contract Token is ERC20, ERC20Detailed, Ownable{
         b.amount = _maxAmount;
     }
 
-    function showBeverages() public view returns(uint8[] memory index, string[] memory names, uint16[] memory prices, uint8[] memory amount) {
+    function allBeveragesLength() public view returns(uint8) {
+        return uint8(allBeverages.length);
+    }
+    function showBeverageByIndex(uint8 _index) public view returns (uint8,string memory,uint16,uint8) {
+        return (_index,allBeverages[_index].name,allBeverages[_index].price,allBeverages[_index].amount);
+    }
+    function showBeverages() public view returns
+    (
+        uint8[] memory index, 
+        string[] memory names, 
+        uint16[] memory prices, 
+        uint8[] memory amount
+    ) 
+    {
         index = new uint8[](allBeverages.length);
         names = new string[](allBeverages.length);
         prices = new uint16[](allBeverages.length);

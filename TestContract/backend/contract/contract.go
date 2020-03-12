@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"strings"
 
@@ -35,6 +34,14 @@ type Contract struct {
 	BlockNumber       *big.Int
 }
 
+type IContract interface {
+	GetAddress() common.Address
+	Depoly(args ...interface{}) error
+	Call(method string, args ...interface{}) ([]interface{}, error)
+	Method(key *ecdsa.PrivateKey, method string, args ...interface{}) (*types.Receipt, error)
+	ListenLatestEvent(_event string) ([]interface{}, error)
+}
+
 func (p *Contract) compile() error {
 	contracts, err := compiler.CompileSolidity("", p.File)
 	if err != nil {
@@ -58,7 +65,7 @@ func (p *Contract) compile() error {
 	return nil
 }
 
-func NewContract(file, name string) (*Contract, error) {
+func NewContract(file, name string) (IContract, error) {
 	ownerKey, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, err
@@ -84,7 +91,7 @@ func NewContract(file, name string) (*Contract, error) {
 	return reVal, nil
 }
 
-func (p *Contract) Deploy(args ...interface{}) error {
+func (p *Contract) Depoly(args ...interface{}) error {
 	input, err := p.Abi.Pack("", args...)
 	if err != nil {
 		return err
@@ -110,6 +117,10 @@ func (p *Contract) Deploy(args ...interface{}) error {
 	}
 	p.BlockNumber = new(big.Int).SetUint64(blockNumber)
 	return nil
+}
+
+func (p *Contract) GetAddress() common.Address {
+	return p.Address
 }
 
 func (p *Contract) Call(method string, args ...interface{}) ([]interface{}, error) {
@@ -159,22 +170,22 @@ func (p *Contract) Method(key *ecdsa.PrivateKey, method string, args ...interfac
 	return receipt, nil
 }
 
-func (p *Contract) ListenEvent(_event string) error {
+func (p *Contract) ListenLatestEvent(_event string) ([]interface{}, error) {
 	curBlock, _ := p.Backend.CurrentBlockNumber(context.Background())
+
 	query := klaytn.FilterQuery{
 		FromBlock: p.BlockNumber,
 		ToBlock:   new(big.Int).SetUint64(curBlock),
 		Addresses: []common.Address{p.Address},
 	}
 	logs, err := p.Backend.FilterLogs(context.Background(), query)
+
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	for _, _log := range logs {
-		ret, err := p.Abi.Events[_event].Inputs.UnpackValues(_log.Data)
-		if err == nil {
-			fmt.Println(ret)
-		}
+	ret, err := p.Abi.Events[_event].Inputs.UnpackValues(logs[len(logs)-1].Data)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	return ret, nil
 }

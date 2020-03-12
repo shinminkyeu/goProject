@@ -10,13 +10,23 @@ import (
 	"github.com/klaytn/klaytn/crypto"
 )
 
-func depolyToken(t *testing.T) *contract.Contract {
+func BenchmarkNewContract(b *testing.B) {
+	file := "/Users/min/go/src/github.com/goProject/TestContract/contract/Token.sol"
+	for i := 0; i < b.N; i++ {
+		_, err := contract.NewContract(file, "Token")
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func depolyToken(t *testing.T) contract.IContract {
 	file := "/Users/min/go/src/github.com/goProject/TestContract/contract/Token.sol"
 	con, err := contract.NewContract(file, "Token")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = con.Deploy(); err != nil {
+	if err = con.Depoly(); err != nil {
 		t.Fatal(err)
 	}
 	return con
@@ -31,14 +41,7 @@ func toECDSA(t *testing.T, hexPK string) (*ecdsa.PrivateKey, error) {
 
 func TestDeploy(t *testing.T) {
 	contract := depolyToken(t)
-	t.Log("contract owner:", contract.Owner.Hex())
-	t.Log("contract source file:", contract.File)
-	t.Log("contract name:", contract.Name)
-	t.Log("contract Language:", contract.Info.Language)
-	t.Log("contract LanguageVersion", contract.Info.LanguageVersion)
-	t.Log("contract CompilerVersion", contract.Info.CompilerVersion)
-	t.Log("contract bytecode size:", len(contract.Code))
-	t.Log("ok > contract address deployed", contract.Address.Hex())
+	t.Log(contract.GetAddress().Hex())
 }
 
 func TestCall(t *testing.T) {
@@ -58,11 +61,12 @@ func TestCall(t *testing.T) {
 
 func TestMethod(t *testing.T) {
 	contract := depolyToken(t)
-	makeCount := 1
+	makeCount := 3
 	//cus, _ := toECDSA(t, "3de3a533f6372abffb91c6e7fbda412d5f5a3edd8900b476e36d921a8ac80c4c")
 	func() {
 		for i := 0; i < makeCount; i++ {
-			receipt, err := contract.Method(nil, "addBeverage", fmt.Sprintf("%s%d", "water", i), uint16(500), uint8(10))
+			name := fmt.Sprintf("%s%d", "water", i)
+			receipt, err := contract.Method(nil, "addBeverage", name, uint16(500), uint8(10))
 			if err != nil {
 				t.Fatal(err)
 				return
@@ -72,10 +76,11 @@ func TestMethod(t *testing.T) {
 				return
 			} else {
 				//t.Log("addBeverage :", receipt.TxHash)
-				err1 := contract.ListenEvent("AddBeverage")
-				if err1 != nil {
-					t.Fatal(err1)
+				event, err := contract.ListenLatestEvent("AddBeverage")
+				if err != nil {
+					t.Fatal(err)
 				}
+				t.Log(event)
 			}
 		}
 	}()
@@ -110,33 +115,37 @@ func TestMethod(t *testing.T) {
 					t.Errorf("buyBeverage error >>> receipt.Status : %d, count : %d", receipt.Status, i+1)
 					return
 				} else {
-					t.Log("buyBeverage :", receipt.TxHash)
-				}
-			}
-		}()
-		func() {
-			for i := 0; i < 50; i++ {
-				receipt, err := contract.Method(nil, "buyBeverage", uint8(0))
-				if err != nil {
-					t.Fatal(err)
-					return
-				} else if receipt.Status != 1 {
-					t.Errorf("buyBeverage error >>> receipt.Status : %d, count : %d", receipt.Status, i+1)
-					return
-				} else {
 					//t.Log("buyBeverage :", receipt.TxHash)
 				}
 			}
 		}()
-	//*/
+	*/
 	result, err := contract.Call("managedBalace")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log(result)
-	result, err = contract.Call("showBeverages")
+	type Beverage struct {
+		index  uint8
+		name   string
+		price  uint16
+		amount uint8
+	}
+	showBeverages(t, contract)
+}
+
+func showBeverages(t *testing.T, contract contract.IContract) {
+	result, err := contract.Call("allBeveragesLength")
+	length := result[0].(uint8)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(result)
+	var i uint8
+	for i = 0; i < length; i++ {
+		beverage, err := contract.Call("showBeverageByIndex", i)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Log(beverage)
+	}
 }

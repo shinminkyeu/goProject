@@ -23,8 +23,6 @@ type DB struct {
 	Block       *mongo.Collection
 }
 
-//21930181
-
 //GetDB 시작함수
 func GetDB() (*DB, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
@@ -72,7 +70,6 @@ func (db *DB) insertHash(hash string) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Look at me! :", result)
 	return result.InsertedID, nil
 }
 
