@@ -30,7 +30,6 @@ type Contract struct {
 	ConstructorInputs []interface{}
 	Backend           *backends.SimulatedBackend
 	Address           common.Address
-	Event             chan types.Log
 	BlockNumber       *big.Int
 }
 
@@ -78,7 +77,6 @@ func NewContract(file, name string) (IContract, error) {
 		Owner:    owner,
 		OwnerKey: ownerKey,
 		Backend:  backends.NewSimulatedBackend(nil),
-		Event:    make(chan types.Log),
 	}
 	if _chainID, err := reVal.Backend.ChainID(context.Background()); err == nil {
 		reVal.Signer = types.NewEIP155Signer(_chainID)

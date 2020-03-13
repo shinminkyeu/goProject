@@ -6,7 +6,6 @@ import "./library/ERC20.sol";
 import "./library/Ownable.sol";
 import "./library/ERC20Detailed.sol";
 
-
 struct Beverage {
     string name;
     uint16 price;
@@ -70,9 +69,11 @@ contract Token is ERC20, ERC20Detailed, Ownable{
     function allBeveragesLength() public view returns(uint8) {
         return uint8(allBeverages.length);
     }
+    
     function showBeverageByIndex(uint8 _index) public view returns (uint8,string memory,uint16,uint8) {
         return (_index,allBeverages[_index].name,allBeverages[_index].price,allBeverages[_index].amount);
     }
+
     function showBeverages() public view returns
     (
         uint8[] memory index, 
